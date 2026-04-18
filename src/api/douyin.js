@@ -25,6 +25,15 @@ api.interceptors.response.use(
     const contentType = response.headers['content-type']
     if (contentType && contentType.includes('application/json')) {
       const res = response.data
+      if (res && res.code !== undefined && res.code == 401) {
+        ElMessage.error('登录已过期，请重新登录')
+        localStorage.removeItem('token')
+        localStorage.removeItem('douyin_token')
+        setTimeout(() => {
+          window.location.replace('/login')
+        }, 1500)
+        return Promise.reject(new Error(res.data || '未授权'))
+      }
       if (res && res.code !== undefined && res.code != 200 && res.code != '200') {
         ElMessage.error(res.data || res.msg || res.message || '请求失败')
         return Promise.reject(new Error(res.data || '请求失败'))
@@ -43,7 +52,11 @@ api.interceptors.response.use(
       if (status === 401) {
         ElMessage.error('登录已过期，请重新登录')
         localStorage.removeItem('token')
-        window.location.href = '/login'
+        localStorage.removeItem('douyin_token')
+        setTimeout(() => {
+          window.location.replace('/login')
+        }, 1500)
+        return
       } else if (status === 500) {
         ElMessage.error('服务器内部错误')
       } else if (status === 404) {
@@ -71,6 +84,12 @@ export const getInitStatus = () => api.get('/Api/GetInit')
 
 // 获取登录状态
 export const getLoginStatus = () => api.get('/Api/GetLogin')
+
+// 扫码登录确认
+export const pnglogin = () => api.get('/Api/Pnglogin')
+
+// 获取浏览器页面截图
+export const getScrlk = () => api.get('/Api/GetScrlk')
 
 // 登录
 export const login = (cookie) => api.get('/Api/login', { params: { cooke: cookie } })

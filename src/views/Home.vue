@@ -312,7 +312,18 @@ const refreshFriends = async () => {
     friendsCount.value = res.data.count || 0
     ElMessage.success('刷新成功')
   } catch (error) {
-    ElMessage.error('刷新失败')
+    const isUnauthorized = error.response?.status === 401 || error.message?.includes('未授权') || error.message?.includes('登录已过期')
+    if (isUnauthorized) {
+      ElMessageBox.confirm('您还未登录抖音账号，是否前往登录？', '提示', {
+        confirmButtonText: '前往登录',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        window.location.href = '/settings'
+      }).catch(() => {})
+    } else {
+      ElMessage.error('刷新失败')
+    }
   }
 }
 
@@ -336,7 +347,16 @@ const initBrowser = async () => {
       browserStatus.value = true
       setBrowserStatus(true)
       ElMessage.success('浏览器初始化成功')
-      await refreshFriends()
+      await checkLoginStatus()
+      if (!loginStatus.value) {
+        ElMessageBox.confirm('浏览器初始化成功，但您还未登录抖音账号，是否前往登录？', '提示', {
+          confirmButtonText: '前往登录',
+          cancelButtonText: '稍后',
+          type: 'warning'
+        }).then(() => {
+          window.location.href = '/settings'
+        }).catch(() => {})
+      }
     }
   } catch (error) {
     ElMessage.error('浏览器初始化失败')

@@ -134,13 +134,30 @@
       </el-button>
     </div>
   </el-card>
+
+  <!-- 调试区域卡片 -->
+  <el-card style="margin-top: 20px">
+    <template #header>
+      <div class="card-header">
+        <span>调试功能</span>
+      </div>
+    </template>
+    <div class="debug-row">
+      <el-button type="primary" :icon="Picture" @click="handleGetScreenshot" :loading="screenshotLoading">
+        获取浏览器页面截图
+      </el-button>
+    </div>
+    <div v-if="screenshotUrl" class="screenshot-wrapper">
+      <img :src="screenshotUrl" alt="浏览器截图" class="screenshot-img" />
+    </div>
+  </el-card>
 </template>
 
 <script setup>
 import { ref, onMounted, onActivated } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Key, Refresh, View, Loading, Edit, Lock, Document, SwitchButton } from '@element-plus/icons-vue'
-import { getInitStatus, getLoginStatus, initBrowser, getLoginPng, login, getUsername, changePassword, getLastLoginIP, getFriendsList, getCooker, logout } from '../api/douyin'
+import { Key, Refresh, View, Loading, Edit, Lock, Document, SwitchButton, Picture } from '@element-plus/icons-vue'
+import { getInitStatus, getLoginStatus, initBrowser, getLoginPng, login, getUsername, changePassword, getLastLoginIP, getFriendsList, getCooker, logout, pnglogin, getScrlk } from '../api/douyin'
 import { loginStatus, hasLoaded, setLoginStatus, setFriendsList } from '../stores/browser'
 
 const loginLoading = ref(false)
@@ -170,6 +187,8 @@ const cookieLoading = ref(false)
 const cookieForm = ref({
   password: ''
 })
+const screenshotLoading = ref(false)
+const screenshotUrl = ref('')
 
 const fetchLastLoginIP = async () => {
   try {
@@ -228,11 +247,11 @@ const handleRefreshStatus = async () => {
 const handleCheckLogin = async () => {
   checkLoading.value = true
   try {
-    const res = await getLoginStatus()
-    loginStatus.value = res.data === 'Yes'
+    const res = await pnglogin()
+    loginStatus.value = res.code == 200
     setLoginStatus(loginStatus.value)
     if (loginStatus.value) {
-      ElMessage.success('已登录，扫码登录窗口将关闭')
+      ElMessage.success('登录成功，扫码登录窗口将关闭')
       qrDialogVisible.value = false
       username.value = ''
       usernameLoaded.value = false
@@ -245,7 +264,7 @@ const handleCheckLogin = async () => {
       ElMessage.warning('未登录，请继续扫码')
     }
   } catch (error) {
-    ElMessage.error('获取登录状态失败')
+    ElMessage.error('扫码登录失败，请重试')
   } finally {
     checkLoading.value = false
   }
@@ -396,6 +415,23 @@ const handleLogout = async () => {
   }
 }
 
+const handleGetScreenshot = async () => {
+  screenshotLoading.value = true
+  screenshotUrl.value = ''
+  try {
+    const res = await getScrlk()
+    if (res.code == 200) {
+      screenshotUrl.value = 'data:image/png;base64,' + res.data
+    } else {
+      ElMessage.error(res.data || '获取截图失败')
+    }
+  } catch (error) {
+    ElMessage.error('获取截图失败，请确保已登录')
+  } finally {
+    screenshotLoading.value = false
+  }
+}
+
 const handleLogin = async () => {
   loginLoading.value = true
   loading.value = true
@@ -528,5 +564,24 @@ onActivated(async () => {
   color: #303133;
   font-size: 14px;
   font-weight: 500;
+}
+
+.debug-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.screenshot-wrapper {
+  margin-top: 16px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.screenshot-img {
+  width: 100%;
+  max-width: 800px;
+  display: block;
 }
 </style>

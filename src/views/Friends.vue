@@ -153,6 +153,17 @@ const loadFriends = async () => {
   try {
     const res = await fetch('/api/Api/GetFriendsList')
     const data = await res.json()
+    if (data.code == 401) {
+      ElMessageBox.confirm('您还未登录抖音账号，是否前往登录？', '提示', {
+        confirmButtonText: '前往登录',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        window.location.href = '/settings'
+      }).catch(() => {})
+      loading.value = false
+      return
+    }
     if (data.code === 200) {
       const list = data.data.list || {}
       const formattedList = Object.entries(list).map(([name, [avatar, fire]]) => ({
