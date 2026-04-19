@@ -2,7 +2,13 @@
 
 抖音火花助手 Web 管理平台，基于 Vue 3 + Element Plus 构建，提供抖音好友火花自动续期的可视化管理系统。
 
+# 法律声明
+
+**重要提示**：本程序仅供个人学习和研究使用。请严格遵守相关法律法规，不得将本程序用于任何违法或侵权行为。如有任何侵权问题，请及时通过以下方式联系我：
+- **邮箱**：3595655855@qq.com
 ---
+## 界面截图
+<img width="2356" height="1238" alt="image" src="https://github.com/user-attachments/assets/49d3066e-ecef-42d6-a983-b3a4ae7b08a3" />
 
 ## 功能特性
 
@@ -109,17 +115,22 @@ npm run build
 ## API 代理配置
 
 开发环境下 Vite 自动将 `/api` 代理至后端（`vite.config.js`）：
-
+如有相同替换即可
 ```js
-server: {
-  port: 5173,
-  proxy: {
-    '/api': {
-      target: 'http://127.0.0.1:9844',
-      changeOrigin: true
-    }
-  }
-}
+        location / {
+            index index.php index.html;
+            try_files $uri $uri/ /index.html;
+            autoindex  off;
+            .......
+          }
+        location /api/ {
+            proxy_pass http://127.0.0.1:9844/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_connect_timeout 60s;
+            proxy_read_timeout 60s;
+        }
 ```
 
 > 后端默认端口为 `9844`，请确保 FastAPI 后端已启动并监听该端口。

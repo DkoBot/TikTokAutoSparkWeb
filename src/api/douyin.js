@@ -97,6 +97,9 @@ export const login = (cookie) => api.get('/Api/login', { params: { cooke: cookie
 // 获取二维码
 export const getLoginPng = () => api.get('/Api/login/Init/GetLoginPng')
 
+// 强制退出登录
+export const dieLogin = () => api.get('/Api/DieLogin')
+
 // 获取Cookie
 export const getCooker = (password) => api.get('/Api/login/Init/GetCooker', { params: { password } })
 

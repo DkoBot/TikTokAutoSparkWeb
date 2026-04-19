@@ -29,6 +29,9 @@
           <el-button :icon="Document" @click="cookieDialogVisible = true">
             获取Base64Cookie
           </el-button>
+          <el-button :icon="SwitchButton" type="danger" @click="handleDieLogin">
+            强制退出登录
+          </el-button>
         </div>
       </div>
     </el-card>
@@ -157,7 +160,7 @@
 import { ref, onMounted, onActivated } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Key, Refresh, View, Loading, Edit, Lock, Document, SwitchButton, Picture } from '@element-plus/icons-vue'
-import { getInitStatus, getLoginStatus, initBrowser, getLoginPng, login, getUsername, changePassword, getLastLoginIP, getFriendsList, getCooker, logout, pnglogin, getScrlk } from '../api/douyin'
+import { getInitStatus, getLoginStatus, initBrowser, getLoginPng, login, getUsername, changePassword, getLastLoginIP, getFriendsList, getCooker, logout, pnglogin, getScrlk, dieLogin } from '../api/douyin'
 import { loginStatus, hasLoaded, setLoginStatus, setFriendsList } from '../stores/browser'
 
 const loginLoading = ref(false)
@@ -412,6 +415,17 @@ const handleLogout = async () => {
     ElMessage.success('已退出登录')
   } catch (error) {
     ElMessage.error('退出失败')
+  }
+}
+
+const handleDieLogin = async () => {
+  try {
+    await dieLogin()
+    setLoginStatus(false)
+    localStorage.removeItem('douyin_token')
+    ElMessage.success('已强制退出登录')
+  } catch (error) {
+    ElMessage.error('强制退出失败')
   }
 }
 

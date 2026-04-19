@@ -19,7 +19,7 @@ options = webdriver.EdgeOptions()
 
 # 防封策略 勿动
 def unban_config():
-    # options.add_argument("--headless")  # 启用无头模式
+    options.add_argument("--headless")  # 启用无头模式
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     options.add_argument('log-level=3')
     options.add_argument(
@@ -345,7 +345,8 @@ def PngLogin(authorization: str = Header(None)):
         try:
             login_type_element = driver.find_element(By.XPATH, '//*[@id="douyin_login_comp_flat_panel"]/picture')
             login_type = login_type_element.text
-            return {'code': '404', 'data': 'login-error-cooker cant login'}
+            driver.refresh()
+            return {'code': '404', 'data': '系统繁忙,请稍后重新登录'}
         except NoSuchElementException:
             Login_is_bool = True
             return {'code': '200', 'data': 'ok'}
@@ -446,21 +447,36 @@ def GetUserInfo(authorization: str = Header(None)):
             data = json.loads('{' + clean + '}')
             return {'code': 200, 'data': data['nickname']}
         else:
-            return {'code': 400, 'data': '未获取到用户名'}
+            return {'code': 400, 'data': '已登录,但未获取到用户名'}
     else:
         return {'code': 400, 'data': '未登录'}
 
 
 @app.get('/Api/GetScrlk')
 def GetScrlk(authorization: str = Header(None)):
-    if Login_is_bool:
-        driver.save_screenshot("temp.png")
-        with open("temp.png", "rb") as f:
-            img_data = base64.b64encode(f.read()).decode('utf-8')
-        os.remove("temp.png")
-        return {'code': 200, 'data': img_data}
-    else:
-        return {'code': 401, 'data': '您还未登录'}
+    auth_err = require_auth(authorization)
+    if auth_err:
+        return auth_err
+    try:
+        if Login_is_bool:
+            driver.save_screenshot("temp.png")
+            with open("temp.png", "rb") as f:
+                img_data = base64.b64encode(f.read()).decode('utf-8')
+            os.remove("temp.png")
+            return {'code': 200, 'data': img_data}
+        else:
+            return {'code': 401, 'data': '您还未登录'}
+    except Exception as e:
+        return {'code': 401, 'data': f'截图错误:{e}'}
+
+
+@app.get('/Api/DieLogin')
+def DieLogin(authorization: str = Header(None)):
+    auth_err = require_auth(authorization)
+    if auth_err:
+        return auth_err
+    driver.delete_all_cookies()
+    return {'code': 200, 'data': '已清除Cooke'}
 
 
 # 定时任务操作
@@ -621,3 +637,5 @@ if __name__ == "__main__":
         port=int(prot),
         reload=False
     )
+
+
