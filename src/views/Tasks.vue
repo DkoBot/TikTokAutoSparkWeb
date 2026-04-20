@@ -5,11 +5,25 @@
         <div class="card-header">
           <span>定时任务管理</span>
           <div class="header-buttons">
-            <el-button type="primary" :icon="Refresh" @click="refreshAll" :loading="loading">
+            <el-button v-if="!selectionMode" type="primary" :icon="Refresh" @click="refreshAll" :loading="loading">
               刷新
             </el-button>
-            <el-button type="success" :icon="Plus" @click="openAddDialog">
+            <el-button v-if="!selectionMode" type="success" :icon="Plus" @click="openAddDialog">
               添加任务
+            </el-button>
+            <template v-if="selectionMode">
+              <el-button type="primary" :icon="Refresh" @click="refreshAll" :loading="loading">
+                刷新
+              </el-button>
+              <el-button type="danger" :icon="Delete" @click="handleBatchDelete" :loading="batchDeleteLoading">
+                删除 ({{ selectedTasks.length }})
+              </el-button>
+              <el-button :icon="Close" @click="cancelSelection">
+                取消
+              </el-button>
+            </template>
+            <el-button v-if="!selectionMode && taskList.length > 0" :icon="Tickets" @click="selectionMode = true">
+              多选
             </el-button>
           </div>
         </div>
@@ -21,8 +35,10 @@
         :data="taskList"
         stripe
         style="width: 100%"
+        @selection-change="handleSelectionChange"
       >
-        <el-table-column type="index" label="序号" width="60" />
+        <el-table-column v-if="selectionMode" type="selection" width="50" />
+        <el-table-column type="index" label="序号" :width="selectionMode ? 80 : 60" />
         <el-table-column prop="name" label="好友" min-width="120" />
         <el-table-column prop="time" label="执行时间" width="100" />
         <el-table-column prop="next_run" label="下次执行" min-width="160" />
@@ -98,13 +114,17 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Refresh } from '@element-plus/icons-vue'
+import { Plus, Refresh, Delete, Close, Tickets } from '@element-plus/icons-vue'
 import { getTaskList, addTask, delTask, editTask, getFriendsList } from '../api/douyin'
 import { friendsList as storeFriendsList, setFriendsList } from '../stores/browser'
 
 const loading = ref(false)
 const taskList = ref([])
 const isFirstLoad = ref(true)
+
+const selectionMode = ref(false)
+const selectedTasks = ref([])
+const batchDeleteLoading = ref(false)
 
 const dialogVisible = ref(false)
 const dialogMode = ref('add')
@@ -227,12 +247,56 @@ const handleDelete = async (task) => {
     })
     await delTask(task.task_id)
     ElMessage.success('删除成功')
-    // 使用刷新方法更新任务列表
     await refreshAll()
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
     }
+  }
+}
+
+const handleSelectionChange = (rows) => {
+  selectedTasks.value = rows
+}
+
+const cancelSelection = () => {
+  selectionMode.value = false
+  selectedTasks.value = []
+}
+
+const handleBatchDelete = async () => {
+  if (selectedTasks.value.length === 0) {
+    ElMessage.warning('请先选择要删除的任务')
+    return
+  }
+  try {
+    await ElMessageBox.confirm(`确定要删除选中的 ${selectedTasks.value.length} 个任务吗？`, '批量删除', {
+      type: 'warning'
+    })
+    batchDeleteLoading.value = true
+    let success = 0
+    let failed = 0
+    for (const task of selectedTasks.value) {
+      try {
+        await delTask(task.task_id)
+        success++
+      } catch {
+        failed++
+      }
+    }
+    if (failed === 0) {
+      ElMessage.success(`批量删除成功，共 ${success} 个`)
+    } else {
+      ElMessage.warning(`完成：成功 ${success} 个，失败 ${failed} 个`)
+    }
+    cancelSelection()
+    await refreshAll()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('批量删除失败')
+    }
+  } finally {
+    batchDeleteLoading.value = false
   }
 }
 </script>

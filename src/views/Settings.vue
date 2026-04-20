@@ -20,6 +20,9 @@
           <el-button type="primary" :icon="Key" @click="handleLogin" :loading="loginLoading" :disabled="loginStatus">
             扫码登录
           </el-button>
+          <el-button type="primary" :icon="Message" @click="phoneDialogVisible = true" :disabled="loginStatus">
+            验证码登录
+          </el-button>
           <el-button :icon="Edit" @click="manualDialogVisible = true" :disabled="loginStatus">
             手动登录
           </el-button>
@@ -72,6 +75,38 @@
         <el-button @click="cookieDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleGetCookie" :loading="cookieLoading">
           获取Cookie
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 验证码登录弹窗 -->
+    <el-dialog v-model="phoneDialogVisible" title="验证码登录" width="400px" destroy-on-close>
+      <el-form :model="phoneForm" label-width="80px">
+        <el-form-item label="手机号">
+          <el-input
+            v-model="phoneForm.phone"
+            placeholder="请输入手机号"
+            @keyup.enter="handleSendCode"
+          />
+        </el-form-item>
+        <el-form-item label="验证码">
+          <div style="display: flex; gap: 10px;">
+            <el-input
+              v-model="phoneForm.code"
+              placeholder="请输入验证码"
+              style="flex: 1"
+              @keyup.enter="handlePhoneLogin"
+            />
+            <el-button @click="handleSendCode" :disabled="codeCountdown > 0" :loading="codeLoading">
+              {{ codeCountdown > 0 ? `${codeCountdown}s` : '发送验证码' }}
+            </el-button>
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="phoneDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handlePhoneLogin" :loading="phoneLoading">
+          登录
         </el-button>
       </template>
     </el-dialog>
@@ -159,8 +194,8 @@
 <script setup>
 import { ref, onMounted, onActivated } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Key, Refresh, View, Loading, Edit, Lock, Document, SwitchButton, Picture } from '@element-plus/icons-vue'
-import { getInitStatus, getLoginStatus, initBrowser, getLoginPng, login, getUsername, changePassword, getLastLoginIP, getFriendsList, getCooker, logout, pnglogin, getScrlk, dieLogin } from '../api/douyin'
+import { Key, Refresh, View, Loading, Edit, Lock, Document, SwitchButton, Picture, Message } from '@element-plus/icons-vue'
+import { getInitStatus, getLoginStatus, initBrowser, getLoginPng, login, getUsername, changePassword, getLastLoginIP, getFriendsList, getCooker, logout, pnglogin, getScrlk, dieLogin, sendVerifyCode, submitVerifyCode } from '../api/douyin'
 import { loginStatus, hasLoaded, setLoginStatus, setFriendsList } from '../stores/browser'
 
 const loginLoading = ref(false)
@@ -192,6 +227,14 @@ const cookieForm = ref({
 })
 const screenshotLoading = ref(false)
 const screenshotUrl = ref('')
+const phoneDialogVisible = ref(false)
+const phoneLoading = ref(false)
+const codeLoading = ref(false)
+const codeCountdown = ref(0)
+const phoneForm = ref({
+  phone: '',
+  code: ''
+})
 
 const fetchLastLoginIP = async () => {
   try {
@@ -426,6 +469,64 @@ const handleDieLogin = async () => {
     ElMessage.success('已强制退出登录')
   } catch (error) {
     ElMessage.error('强制退出失败')
+  }
+}
+
+const handleSendCode = async () => {
+  if (!phoneForm.value.phone) {
+    ElMessage.warning('请输入手机号')
+    return
+  }
+  codeLoading.value = true
+  try {
+    const res = await sendVerifyCode(phoneForm.value.phone)
+    if (res.code == 200) {
+      ElMessage.success('验证码发送成功')
+      codeCountdown.value = 60
+      const timer = setInterval(() => {
+        codeCountdown.value--
+        if (codeCountdown.value <= 0) {
+          clearInterval(timer)
+        }
+      }, 1000)
+    } else {
+      ElMessage.error(res.data || '验证码发送失败')
+    }
+  } catch (error) {
+    ElMessage.error('验证码发送失败，请确保浏览器已初始化')
+  } finally {
+    codeLoading.value = false
+  }
+}
+
+const handlePhoneLogin = async () => {
+  if (!phoneForm.value.phone) {
+    ElMessage.warning('请输入手机号')
+    return
+  }
+  if (!phoneForm.value.code) {
+    ElMessage.warning('请输入验证码')
+    return
+  }
+  phoneLoading.value = true
+  try {
+    const res = await submitVerifyCode(phoneForm.value.code)
+    if (res.code == 200) {
+      ElMessage.success('登录成功')
+      phoneDialogVisible.value = false
+      setLoginStatus(true)
+      username.value = ''
+      usernameLoaded.value = false
+      localStorage.removeItem('douyin_username')
+      localStorage.removeItem('douyin_username_loaded')
+      await fetchUsername()
+    } else {
+      ElMessage.error(res.data || '登录失败')
+    }
+  } catch (error) {
+    ElMessage.error('登录失败，请重试')
+  } finally {
+    phoneLoading.value = false
   }
 }
 

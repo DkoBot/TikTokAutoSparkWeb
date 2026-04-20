@@ -91,8 +91,40 @@ export const pnglogin = () => api.get('/Api/Pnglogin')
 // 获取浏览器页面截图
 export const getScrlk = () => api.get('/Api/GetScrlk')
 
+// Gzip压缩后base64编码
+const encodeGzipBase64 = async (str) => {
+  const bytes = new TextEncoder().encode(str)
+  const cs = new CompressionStream('gzip')
+  const writer = cs.writable.getWriter()
+  writer.write(bytes)
+  writer.close()
+  const reader = cs.readable.getReader()
+  const chunks = []
+  let result = new Uint8Array(0)
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    const newResult = new Uint8Array(result.length + value.length)
+    newResult.set(result, 0)
+    newResult.set(value, result.length)
+    result = newResult
+  }
+  return btoa(String.fromCharCode(...result))
+}
+
 // 登录
-export const login = (cookie) => api.get('/Api/login', { params: { cooke: cookie } })
+export const login = async (cookie) => {
+  const jsonStr = JSON.stringify(cookie)
+  const encoder = new TextEncoder()
+  const inputData = encoder.encode(jsonStr)
+  const cs = new CompressionStream('gzip')
+  const writer = cs.writable.getWriter()
+  writer.write(inputData)
+  writer.close()
+  const output = await new Response(cs.readable).arrayBuffer()
+  const base64 = btoa(String.fromCharCode(...new Uint8Array(output)))
+  return api.post('/Api/login', { cooke: base64, gzip_flag: true })
+}
 
 // 获取二维码
 export const getLoginPng = () => api.get('/Api/login/Init/GetLoginPng')
@@ -102,6 +134,12 @@ export const dieLogin = () => api.get('/Api/DieLogin')
 
 // 获取Cookie
 export const getCooker = (password) => api.get('/Api/login/Init/GetCooker', { params: { password } })
+
+// 发送验证码
+export const sendVerifyCode = (phone) => api.get('/Api/LoginPhone', { params: { phone } })
+
+// 提交验证码
+export const submitVerifyCode = (code) => api.get('/Api/LoginPhoneInput', { params: { code } })
 
 // 退出登录
 export const logout = () => api.get('/Api/logout')

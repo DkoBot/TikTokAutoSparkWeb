@@ -4,9 +4,25 @@
       <template #header>
         <div class="card-header">
           <span>好友列表</span>
-          <el-button type="primary" :icon="Refresh" @click="loadFriends" :loading="loading">
-            刷新
-          </el-button>
+          <div class="header-actions">
+            <el-button v-if="!selectionMode" type="primary" :icon="Refresh" @click="loadFriends" :loading="loading">
+              刷新
+            </el-button>
+            <el-button v-if="!selectionMode" type="success" :icon="Tickets" @click="selectionMode = true">
+              多选
+            </el-button>
+            <template v-if="selectionMode">
+              <el-button type="primary" :icon="Refresh" @click="loadFriends" :loading="loading">
+                刷新
+              </el-button>
+              <el-button type="success" :icon="Check" @click="openBatchTaskDialog">
+                创建定时任务 ({{ selectedFriends.length }})
+              </el-button>
+              <el-button :icon="Close" @click="cancelSelection">
+                取消
+              </el-button>
+            </template>
+          </div>
         </div>
       </template>
 
@@ -17,8 +33,13 @@
           placeholder="搜索好友..."
           :prefix-icon="Search"
           clearable
-          style="max-width: 300px"
+          style="max-width: 220px"
         />
+        <el-select v-model="fireFilter" placeholder="火花筛选" clearable style="width: 140px; margin-left: 10px">
+          <el-option label="全部" value="all" />
+          <el-option label="有火花" value="has" />
+          <el-option label="无火花" value="none" />
+        </el-select>
       </div>
 
       <!-- 好友列表 -->
@@ -27,8 +48,10 @@
         :data="filteredFriends"
         stripe
         style="width: 100%"
+        @selection-change="handleSelectionChange"
       >
-        <el-table-column type="index" label="序号" width="60" />
+        <el-table-column v-if="selectionMode" type="selection" width="50" />
+        <el-table-column type="index" label="序号" :width="selectionMode ? 80 : 60" />
         <el-table-column label="头像" width="80">
           <template #default="{ row }">
             <el-avatar :size="40" :src="row.avatar">
@@ -39,7 +62,7 @@
         <el-table-column prop="name" label="昵称" min-width="120" />
         <el-table-column prop="fire" label="火花天数" width="100">
           <template #default="{ row }">
-            <el-tag v-if="row.fire > 0" type="warning">{{ row.fire }}🔥</el-tag>
+            <el-tag v-if="isFireActive(row.fire)" type="warning">{{ row.fire }}🔥</el-tag>
             <el-tag v-else type="info">无火花</el-tag>
           </template>
         </el-table-column>
@@ -113,18 +136,63 @@
         <el-button type="primary" @click="handleCreateTask" :loading="taskLoading">创建</el-button>
       </template>
     </el-dialog>
+
+    <!-- 批量创建定时任务对话框 -->
+    <el-dialog v-model="batchTaskDialogVisible" title="批量创建定时任务" width="600px" destroy-on-close>
+      <div class="selected-friends">
+        <span class="label">已选好友 ({{ selectedFriends.length }})：</span>
+        <el-tag v-for="f in selectedFriends" :key="f.name" style="margin: 4px 4px 4px 0">
+          {{ f.name }}
+        </el-tag>
+        <span v-if="selectedFriends.length === 0" class="empty-hint">未选择任何好友</span>
+      </div>
+      <el-divider />
+      <el-form :model="batchTaskForm" label-width="80px">
+        <el-form-item label="执行时间">
+          <el-time-picker
+            v-model="batchTaskForm.time"
+            format="HH:mm"
+            value-format="HH:mm"
+            placeholder="选择时间"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="消息内容">
+          <el-input
+            v-model="batchTaskForm.text"
+            type="textarea"
+            :rows="3"
+            placeholder="留空将使用每日名言"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="batchTaskDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleBatchCreateTask" :loading="batchTaskLoading">
+          批量创建 ({{ selectedFriends.length }})
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Refresh, Search, User, ArrowDown } from '@element-plus/icons-vue'
+import { Refresh, Search, User, ArrowDown, Tickets, Check, Close } from '@element-plus/icons-vue'
 import { sendMessage, addTask } from '../api/douyin'
 import { friendsList, setFriendsList } from '../stores/browser'
 
 const loading = ref(false)
 const searchKeyword = ref('')
+const fireFilter = ref('')
+
+// 判断是否有火花：数值>0 或文本非空非"0"
+const isFireActive = (fire) => {
+  if (!fire) return false
+  const n = Number(fire)
+  return !isNaN(n) ? n > 0 : true
+}
 
 const sendDialogVisible = ref(false)
 const sendLoading = ref(false)
@@ -141,17 +209,43 @@ const taskForm = ref({
   text: ''
 })
 
+const selectionMode = ref(false)
+const selectedFriends = ref([])
+const batchTaskDialogVisible = ref(false)
+const batchTaskLoading = ref(false)
+const batchTaskForm = ref({
+  time: '',
+  text: ''
+})
+
 const filteredFriends = computed(() => {
-  if (!searchKeyword.value) return friendsList.value
-  const keyword = searchKeyword.value.toLowerCase()
-  return friendsList.value.filter(f => f.name.toLowerCase().includes(keyword))
+  let list = friendsList.value
+
+  if (searchKeyword.value) {
+    const keyword = searchKeyword.value.toLowerCase()
+    list = list.filter(f => f.name.toLowerCase().includes(keyword))
+  }
+
+  if (fireFilter.value && fireFilter.value !== 'all') {
+    list = list.filter(f => {
+      if (fireFilter.value === 'has') return isFireActive(f.fire)
+      if (fireFilter.value === 'none') return !isFireActive(f.fire)
+      return false
+    })
+  }
+
+  return list
 })
 
 // 刷新按钮 - 请求 API 获取最新数据
 const loadFriends = async () => {
   loading.value = true
   try {
-    const res = await fetch('/api/Api/GetFriendsList')
+    const res = await fetch('/api/Api/GetFriendsList', {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token') || localStorage.getItem('douyin_token')}`
+      }
+    })
     const data = await res.json()
     if (data.code == 401) {
       ElMessageBox.confirm('您还未登录抖音账号，是否前往登录？', '提示', {
@@ -240,6 +334,54 @@ const handleCreateTask = async () => {
     taskLoading.value = false
   }
 }
+
+const handleSelectionChange = (rows) => {
+  selectedFriends.value = rows
+}
+
+const cancelSelection = () => {
+  selectionMode.value = false
+  selectedFriends.value = []
+}
+
+const openBatchTaskDialog = () => {
+  if (selectedFriends.value.length === 0) {
+    ElMessage.warning('请先选择好友')
+    return
+  }
+  batchTaskForm.value = { time: '', text: '' }
+  batchTaskDialogVisible.value = true
+}
+
+const handleBatchCreateTask = async () => {
+  if (!batchTaskForm.value.time) {
+    ElMessage.warning('请选择时间')
+    return
+  }
+
+  batchTaskLoading.value = true
+  let success = 0
+  let failed = 0
+  try {
+    for (const friend of selectedFriends.value) {
+      try {
+        await addTask(batchTaskForm.value.time, friend.name, batchTaskForm.value.text || null)
+        success++
+      } catch {
+        failed++
+      }
+    }
+    if (failed === 0) {
+      ElMessage.success(`批量创建成功，共 ${success} 个任务`)
+    } else {
+      ElMessage.warning(`完成：成功 ${success} 个，失败 ${failed} 个`)
+    }
+    batchTaskDialogVisible.value = false
+    cancelSelection()
+  } finally {
+    batchTaskLoading.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -250,6 +392,31 @@ const handleCreateTask = async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.selected-friends {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.selected-friends .label {
+  font-weight: 500;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+
+.selected-friends .empty-hint {
+  color: #999;
+  font-size: 14px;
 }
 
 .search-bar {
