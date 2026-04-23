@@ -136,7 +136,7 @@ export const dieLogin = () => api.get('/Api/DieLogin')
 export const getCooker = (password) => api.get('/Api/login/Init/GetCooker', { params: { password } })
 
 // 发送验证码
-export const sendVerifyCode = (phone) => api.get('/Api/LoginPhone', { params: { phone } })
+export const sendVerifyCode = (areacode, phone) => api.get('/Api/LoginPhone', { params: { areacode, phone } })
 
 // 提交验证码
 export const submitVerifyCode = (code) => api.get('/Api/LoginPhoneInput', { params: { code } })
@@ -170,6 +170,9 @@ export const changePassword = (old_password, new_password) => api.get('/Api/Chan
 
 // 获取上次登录IP
 export const getLastLoginIP = () => api.get('/Api/GetLastLoginIP')
+
+// 强制登录状态
+export const forceLogin = () => api.get('/Api/LoginDebug')
 
 // 获取项目启动时间
 export const getHome = () => api.get('/Home')

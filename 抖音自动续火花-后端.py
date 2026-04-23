@@ -1,32 +1,33 @@
-import re,os,gzip
+import re, os, gzip
 from selenium import webdriver
 from selenium.webdriver import Keys
 from selenium.webdriver.edge.service import Service
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import SessionNotCreatedException
 from selenium.webdriver.common.by import By
-import schedule,requests
-import time,uvicorn
+import schedule, requests
+import time, uvicorn
 from datetime import datetime
-import json,base64
+import json, base64
 from fastapi import FastAPI, Header, Request, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 import threading, hashlib, secrets
-
-
 
 service = Service(executable_path=r'C:\WebDriver\edge\msedgedriver.exe')
 options = webdriver.EdgeOptions()
 off_ui = False
 off_ui_input = input('是否显示游览器[默认回车不显示,输入任意则显示]:')
-if off_ui_input=="":
+if off_ui_input == "":
     off_ui = True
+
+
 def unban_config():
     if off_ui:
         options.add_argument("--headless")  # 启用无头模式
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     options.add_argument('log-level=3')
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.5481.177 Safari/537.36")
+    options.add_argument(
+        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.5481.177 Safari/537.36")
     options.add_experimental_option('excludeSwitches', ['enable-automation', 'useAutomationExtension'])
     options.add_argument('--disable-blink-features=AutomationControlled')
     options.add_argument('--disable-gpu')
@@ -38,6 +39,8 @@ def unban_config():
     options.add_argument('--no-sandbox')
     options.add_argument('--start-maximized')
     options.add_argument("--force-device-scale-factor=0.25")
+
+
 def AiqingGongyu_text():
     req = requests.get('https://v2.xxapi.cn/api/aiqinggongyu')
     if req.status_code == 200:
@@ -46,9 +49,11 @@ def AiqingGongyu_text():
         if json_data:
             return json_data
         else:
-           return '暂无今日名言'
+            return '暂无今日名言'
     else:
         return '暂无今日名言'
+
+
 def Get_Cooke():
     driver.get('https://www.douyin.com/')
     for_OFF = True
@@ -56,12 +61,15 @@ def Get_Cooke():
     while for_OFF:
         try:
             # 尝试获取 login_type 元素
-            login_type_element = driver.find_element(By.XPATH,'/html/body/div[2]/div[1]/div[4]/div[1]/div[1]/header/div/div/div[2]/div/pace-island/div/div[5]/div/div[1]/button/span/p')
+            login_type_element = driver.find_element(By.XPATH,
+                                                     '/html/body/div[2]/div[1]/div[4]/div[1]/div[1]/header/div/div/div[2]/div/pace-island/div/div[5]/div/div[1]/button/span/p')
         except NoSuchElementException:
             cooke = driver.get_cookies()
             print(f'✅ Cooke获取成功,您的Cooke为 [请完整复制到cookies_list变量中]:\n{cooke}')
             driver.close()
             exit()
+
+
 def format_time(time_str: str) -> str:
     """
     将时间字符串格式化为 HH:MM 格式
@@ -94,80 +102,98 @@ def format_time(time_str: str) -> str:
     except ValueError:
         print(f'⚠️ 时间解析错误，使用默认时间 22:00')
         return '22:00'
+
+
 class TrueString:
     def __init__(self, is_bool, string):
         self.is_bool = is_bool
         self.string = string
+
+
 class UserFriendsInfo:
-    def __init__(self, username, avatar,fire):
+    def __init__(self, username, avatar, fire):
         self.username = username
         self.avatar = avatar
         self.fire = fire
+
+
 class Douyin:
     friends_xpath_list = {}
+
     def __init__(self, driver):
         self.driver = driver  # 将 driver 作为实例属性
+
     def PrintfFrinder(self):
 
         print(f'\n⏭️ 好友列表 共获取{len(self.friends_xpath_list)}位:\n------------------')
-        for index,value in self.friends_xpath_list.items():
+        for index, value in self.friends_xpath_list.items():
             print(index)
         print('------------------')
+
     def Updara_FrinderList(self):
         friends_xpath = '//div[@class="conversationConversationListwrapper"]/div/div/div'
-        msg_main_list = driver.find_elements(By.XPATH,friends_xpath)
+        msg_main_list = driver.find_elements(By.XPATH, friends_xpath)
         temp_list = []
         for msg_len in range(1, len(msg_main_list) + 1):
-            new_xpath = f'//div[@class="conversationConversationListwrapper"]/div/div[{msg_len+1}]/div[1]/div[2]/div[1]/div[1]'
-            avatar_xpath = f'//div[@class="conversationConversationListwrapper"]/div/div[{msg_len+1}]/div[1]/div[1]/div/span/img'
-            avatar_xpath2 = f'//div[@class="conversationConversationListwrapper"]/div/div[{msg_len+1}]/div/div/img'
-            fire_xpath = f'//div[@class="conversationConversationListwrapper"]/div/div[{msg_len+1}]/div[1]/div[2]/div[1]/div[2]/div[1]/div/div'
+            new_xpath = f'//div[@class="conversationConversationListwrapper"]/div/div[{msg_len + 1}]/div[1]/div[2]/div[1]/div[1]'
+            avatar_xpath = f'//div[@class="conversationConversationListwrapper"]/div/div[{msg_len + 1}]/div[1]/div[1]/div/span/img'
+            avatar_xpath2 = f'//div[@class="conversationConversationListwrapper"]/div/div[{msg_len + 1}]/div/div/img'
+            fire_xpath = f'//div[@class="conversationConversationListwrapper"]/div/div[{msg_len + 1}]/div[1]/div[2]/div[1]/div[2]/div[1]/div/div'
             friends_get = driver.find_element(By.XPATH, value=new_xpath)
             friends_text = friends_get.text
             try:
                 avatar_get = driver.find_element(By.XPATH, value=avatar_xpath)
-                avatar =  avatar_get.get_attribute('src')
+                avatar = avatar_get.get_attribute('src')
             except:
                 avatar_get = driver.find_element(By.XPATH, value=avatar_xpath2)
-                avatar =  avatar_get.get_attribute('src')
+                avatar = avatar_get.get_attribute('src')
             self.friends_xpath_list[friends_text] = new_xpath
             try:
                 fire_count = driver.find_element(By.XPATH, value=fire_xpath).text.strip()
             except:
                 fire_count = ''
-            temp_list.append(UserFriendsInfo(friends_text,avatar,fire_count))
+            temp_list.append(UserFriendsInfo(friends_text, avatar, fire_count))
         return temp_list
 
-    def Send_Frinder(self,name:str,text:str):
+    def Send_Frinder(self, name: str, text: str):
         count = self.Updara_FrinderList()
-        if count==0:
+        if count == 0:
             print("⚠️ 更新好友列表失败!")
         else:
             try:
-                for index,value in self.friends_xpath_list.items():
-                    if index==name:
+                for index, value in self.friends_xpath_list.items():
+                    if index == name:
                         friend_id = driver.find_element(By.XPATH, value=value)
                         friend_id.click()
                         time.sleep(1.5)
-                        seng = driver.find_element(By.XPATH, value='//div[@class="messageEditorimChatEditorContainer"]/div/div')
+                        seng = driver.find_element(By.XPATH,
+                                                   value='//div[@class="messageEditorimChatEditorContainer"]/div/div')
                         seng.send_keys(text)
                         seng.send_keys(Keys.ENTER)
-                        return TrueString(True,None)
+                        return TrueString(True, None)
             except Exception as e:
-                return TrueString(False,e)
+                return TrueString(False, e)
 
-    def Find_Friends(self,name:str):
+    def Find_Friends(self, name: str):
         count = self.Updara_FrinderList()
         is_find = False
-        if count==0:
-            return TrueString(False,'未初始化好友')
+        if count == 0:
+            return TrueString(False, '未初始化好友')
         try:
             for index, value in self.friends_xpath_list.items():
                 if index == name:
                     is_find = True
-            return TrueString(is_find,None)
+            return TrueString(is_find, None)
         except Exception as e:
             return TrueString(False, e)
+
+    def LoginInit(self):
+        try:
+            dle_user = driver.find_element(By.XPATH,
+                                           value='//*[@id="douyin_login_comp_flat_panel"]/div/div[2]/div/div[4]/p')
+            dle_user.click()
+        except:
+            pass
 
 
 init = False
@@ -186,19 +212,30 @@ app.add_middleware(
 # 密码存储 (内存中，生产环境建议存入文件或数据库)
 _password = '123456'  # 默认密码
 
+
 def hash_pwd(pwd: str) -> str:
     return hashlib.sha256(pwd.encode()).hexdigest()
+
+
 # Token存储
 _valid_tokens = set()
 _last_login_ip = '无'
+
+
 def generate_token() -> str:
     token = secrets.token_hex(32)
     _valid_tokens.add(token)
     return token
+
+
 def verify_token(token: str) -> bool:
     return token in _valid_tokens
+
+
 def remove_token(token: str):
     _valid_tokens.discard(token)
+
+
 def require_auth(authorization: str = Header(None)):
     if not authorization or not authorization.startswith('Bearer '):
         return {'code': 401, 'data': '未授权'}
@@ -207,9 +244,9 @@ def require_auth(authorization: str = Header(None)):
         return {'code': 401, 'data': '未授权'}
     return None
 
+
 # 定时任务存储
 scheduled_tasks = {}  # 格式: {任务ID: job对象}
-
 
 
 # 定时线程
@@ -218,13 +255,18 @@ def run_schedule():
     while True:
         schedule.run_pending()
         time.sleep(1)
+
+
 def start_scheduler():
     """启动定时任务调度线程"""
     scheduler_thread = threading.Thread(target=run_schedule, daemon=True)
     scheduler_thread.start()
     return scheduler_thread
 
+
 start_time = datetime.now()
+
+
 # 抖音操作
 @app.get('/Home')
 def Home(authorization: str = Header(None)):
@@ -232,14 +274,16 @@ def Home(authorization: str = Header(None)):
     if auth_err:
         return auth_err
     return {'time': start_time}
+
+
 @app.get('/Api/Init')  # 初始化浏览器
 def Init(authorization: str = Header(None)):
     auth_err = require_auth(authorization)
     if auth_err:
         return auth_err
-    
+
     global init, driver, douyin
-    
+
     if not init:
         try:
             unban_config()
@@ -258,13 +302,17 @@ def Init(authorization: str = Header(None)):
             return {'code': 500, 'data': f'初始化失败: {str(e)}'}
     else:
         return {'code': 200, 'data': 'init Repeated!'}
-@app.get('/Api/GetInit')
+
+
+@app.get('/Api/GetInit')  # 获取初始化状态
 def GetInit(authorization: str = Header(None)):
     auth_err = require_auth(authorization)
     if auth_err:
         return auth_err
-    return {'code':200,'data':'Yes' if init else 'No'}
-@app.post('/Api/login') # 登录 传入cooke
+    return {'code': 200, 'data': 'Yes' if init else 'No'}
+
+
+@app.post('/Api/login')  # 登录 传入cooke
 def Login(cooke: str = Body(default=None), gzip_flag: bool = Body(default=False), authorization: str = Header(None)):
     auth_err = require_auth(authorization)
     if auth_err:
@@ -277,24 +325,27 @@ def Login(cooke: str = Body(default=None), gzip_flag: bool = Body(default=False)
                 try:
                     decoded_bytes = gzip.decompress(decoded_bytes)
                 except Exception:
-                    return {'code':'404','data':'login-error-gzip decompress failed, check cookie format and gzip flag'}
+                    return {'code': '404',
+                            'data': 'login-error-gzip decompress failed, check cookie format and gzip flag'}
             cookie_list = decoded_bytes.decode('utf-8')
             str = eval(base64.b64decode(cookie_list).decode('utf-8').replace('false', 'False').replace('true', 'True'))
             for cookie in str:
                 driver.add_cookie(cookie)
         except Exception as e:
-            return {'code':'404','data':f'login-error-cookie parse error: {str(e)}'}
+            return {'code': '404', 'data': f'login-error-cookie parse error: {str(e)}'}
         driver.refresh()
         try:
-            login_type_element = driver.find_element(By.XPATH,'//*[@id="douyin_login_comp_flat_panel"]/picture')
+            login_type_element = driver.find_element(By.XPATH, '//*[@id="douyin_login_comp_flat_panel"]/picture')
             login_type = login_type_element.text
-            return {'code':'404','data':'login-error-cooker cant login'}
+            return {'code': '404', 'data': 'login-error-cooker cant login'}
         except NoSuchElementException:
             Login_is_bool = True
-            return {'code':'200','data':'ok'}
+            return {'code': '200', 'data': 'ok'}
     else:
-        return {'code':'404','data':'login-error-not cooker'} # # @#z
-@app.get('/Api/Pnglogin') # 扫码登录
+        return {'code': '404', 'data': 'login-error-not cooker'}  # # @#z
+
+
+@app.get('/Api/Pnglogin')  # 扫码登录
 def PngLogin(authorization: str = Header(None)):
     auth_err = require_auth(authorization)
     if auth_err:
@@ -306,34 +357,45 @@ def PngLogin(authorization: str = Header(None)):
             for cookie in cooke:
                 driver.add_cookie(cookie)
         except Exception as e:
-            return {'code':'404','data':f'login-error-cookie parse error: {str(e)}'}
+            return {'code': '404', 'data': f'login-error-cookie parse error: {str(e)}'}
         driver.refresh()
         try:
-            login_type_element = driver.find_element(By.XPATH,'//*[@id="douyin_login_comp_flat_panel"]/picture')
+            login_type_element = driver.find_element(By.XPATH, '//*[@id="douyin_login_comp_flat_panel"]/picture')
             login_type = login_type_element.text
             driver.refresh()
-            return {'code':'404','data':'系统繁忙,请稍后重新登录'}
+            return {'code': '404', 'data': '系统繁忙,请稍后重新登录'}
         except NoSuchElementException:
             Login_is_bool = True
-            return {'code':'200','data':'ok'}
+            return {'code': '200', 'data': 'ok'}
     else:
-        return {'code':'404','data':'login-error-not cooker'} # # @#z
-@app.get('/Api/GetLogin') # 获取登录
+        return {'code': '404', 'data': 'login-error-not cooker'}  # # @#z
+
+
+@app.get('/Api/GetLogin')  # 获取登录
 def GetLogin(authorization: str = Header(None)):
     auth_err = require_auth(authorization)
     if auth_err:
         return auth_err
-    return {'code':200,'data':'Yes' if Login_is_bool else 'No'}
-@app.get('/Api/login/Init/GetLoginPng') # 获取登录扫码
+    return {'code': 200, 'data': 'Yes' if Login_is_bool else 'No'}
+
+
+@app.get('/Api/login/Init/GetLoginPng')  # 获取登录扫码
 def GetLoginPng(authorization: str = Header(None)):
     auth_err = require_auth(authorization)
     if auth_err:
         return auth_err
     try:
+        Douyin.LoginInit(douyin)
+        try:
+            error = driver.find_element(By.XPATH, '//*[@id="animate_qrcode_container"]/div[2]/div/p[1]')
+            img_element = driver.find_element(By.XPATH, '//*[@id="animate_qrcode_container"]/div[2]/img')
+            img_element.click()
+        except:
+            pass
         img_element = driver.find_element(By.XPATH, '//*[@id="animate_qrcode_container"]/div[2]/img')
         login_src = img_element.get_attribute('src')
         try:
-            is_rust = driver.find_element(By.XPATH,'//*[@id="animate_qrcode_container"]/div[2]/div')
+            is_rust = driver.find_element(By.XPATH, '//*[@id="animate_qrcode_container"]/div[2]/div')
             is_rust.click()
             time.sleep(5)
             img_element = driver.find_element(By.XPATH, '//*[@id="animate_qrcode_container"]/div[2]/img')
@@ -341,29 +403,31 @@ def GetLoginPng(authorization: str = Header(None)):
         except:
             pass
         if login_src:
-            return {'code':200,'data':login_src}
+            return {'code': 200, 'data': login_src}
         else:
-            return {'code':404,'data':'cant find LoginPng src attribute'}
+            return {'code': 404, 'data': 'cant find LoginPng src attribute'}
     except NoSuchElementException:
-        return {'code':404,'data':'cant find img element'}
-@app.get('/Api/login/Init/GetCooker') # 获取cooke
+        return {'code': 404, 'data': 'cant find img element'}
+
+
+@app.get('/Api/login/Init/GetCooker')  # 获取cooke
 def GetCooke(password: str = Query(None), authorization: str = Header(None)):
     auth_err = require_auth(authorization)
     if auth_err:
         return auth_err
     # 验证密码
     if not password or hash_pwd(password) != hash_pwd(_password):
-        return {'code': 401, 'data': '密码错误'}
+        return {'code': 400, 'data': '密码错误'}
     if Login_is_bool:
         cooke = driver.get_cookies()
         cookie_json = json.dumps(cooke)
-        # 先gzip压缩，再base64编码
-        cookie_gzip = gzip.compress(cookie_json.encode('utf-8'))
-        cookie_base64 = base64.b64encode(cookie_gzip).decode('utf-8')
-        return {'code':200,'data':{'cooke':cookie_base64}}
+        cookie_base64 = base64.b64encode(cookie_json.encode('utf-8')).decode('utf-8')
+        return {'code': 200, 'data': {'cooke': cookie_base64}}
     else:
-        return {'code': 401, 'data': '未登录'}
-@app.get('/Api/GetFriendsList') # 获取好友列表
+        return {'code': 400, 'data': '未登录'}
+
+
+@app.get('/Api/GetFriendsList')  # 获取好友列表
 def GetFrindesList(authorization: str = Header(None)):
     auth_err = require_auth(authorization)
     if auth_err:
@@ -378,18 +442,22 @@ def GetFrindesList(authorization: str = Header(None)):
         return {'code': 200, 'data': {'count': len(friends_list), 'list': dicts}}
     except Exception as e:
         return {'code': 404, 'data': str(e)}
-@app.get('/Api/Send')# 发送信息
-def Send(name:str,text:str, authorization: str = Header(None)):
+
+
+@app.get('/Api/Send')  # 发送信息
+def Send(name: str, text: str, authorization: str = Header(None)):
     auth_err = require_auth(authorization)
     if auth_err:
         return auth_err
     Douyin.Updara_FrinderList(douyin)
-    out = Douyin.Send_Frinder(douyin,name,text)
+    out = Douyin.Send_Frinder(douyin, name, text)
     if out.is_bool:
-        return {'code':200,'data':'Send successfully'}
+        return {'code': 200, 'data': 'Send successfully'}
     else:
-        return {'code':404,'data':out.string}
-@app.get('/Api/GetUsername') # 获取用户名
+        return {'code': 404, 'data': out.string}
+
+
+@app.get('/Api/GetUsername')  # 获取用户名
 def GetUserInfo(authorization: str = Header(None)):
     auth_err = require_auth(authorization)
     if auth_err:
@@ -400,53 +468,63 @@ def GetUserInfo(authorization: str = Header(None)):
             text = match.group(0)
             clean = text.replace('\\"', '"')
             data = json.loads('{' + clean + '}')
-            return {'code':200,'data':data['nickname']}
+            return {'code': 200, 'data': data['nickname']}
         else:
-            return {'code':400,'data':'已登录,但未获取到用户名'}
+            return {'code': 400, 'data': '已登录,但未获取到用户名'}
     else:
-        return {'code':400,'data':'未登录'}
-@app.get('/Api/GetScrlk') # 获取截图
+        return {'code': 400, 'data': '未登录'}
+
+
+@app.get('/Api/GetScrlk')  # 获取截图
 def GetScrlk(authorization: str = Header(None)):
     auth_err = require_auth(authorization)
     if auth_err:
         return auth_err
     try:
-        if Login_is_bool:
-            driver.save_screenshot("temp.png")
-            with open("temp.png", "rb") as f:
-                img_data = base64.b64encode(f.read()).decode('utf-8')
-            os.remove("temp.png")
-            return {'code': 200, 'data': img_data}
-        else:
-            return {'code': 401, 'data': '您还未登录'}
+        driver.save_screenshot("temp.png")
+        with open("temp.png", "rb") as f:
+            img_data = base64.b64encode(f.read()).decode('utf-8')
+        os.remove("temp.png")
+        return {'code': 200, 'data': img_data}
     except Exception as e:
-        return {'code':400,'data':f'截图错误:{e}'}
-@app.get('/Api/DieLogin') # 取消登录
+        return {'code': 400, 'data': f'截图错误:{e}'}
+
+
+@app.get('/Api/DieLogin')  # 取消登录
 def DieLogin(authorization: str = Header(None)):
     auth_err = require_auth(authorization)
     if auth_err:
         return auth_err
     driver.delete_all_cookies()
+    driver.refresh()
     return {'code': 200, 'data': '已清除Cooke'}
-@app.get('/Api/LoginPhone') # 验证码登录
-def authorization(phone:str,authorization: str = Header(None)):
+
+
+@app.get('/Api/LoginPhone')  # 验证码登录
+def authorization(areacode: str, phone: str, authorization: str = Header(None)):
     auth_err = require_auth(authorization)
     if auth_err:
         return auth_err
     try:
+        Douyin.LoginInit(douyin)
+        areacode_value = driver.find_element(By.XPATH, '//*[@id="douyin_login_comp_normal_input_id"]/div[1]/div/input')
+        areacode_value.clear()
+        areacode_value.send_keys(areacode.strip())
         inp = driver.find_element(By.XPATH, '//*[@id="normal-input"]')
         inp.send_keys(phone)
         span = driver.find_element(By.XPATH, '//*[@id="douyin_login_comp_button_input_id"]/span')
         span.click()
         time.sleep(2)
-        if span.text.strip()=='获取验证码':
-            return {'code':400,'data':'验证码发送失败'}
+        if span.text.strip() == '获取验证码':
+            return {'code': 400, 'data': '验证码发送失败'}
         else:
-            return {'code':200,'data':'验证码发送成功'}
+            return {'code': 200, 'data': '验证码发送成功'}
     except Exception as e:
-        return {'code':400,'data':e}
-@app.get('/Api/LoginPhoneInput') # 验证码登录 2 输入验证码
-def authorization(code:str,authorization: str = Header(None)):
+        return {'code': 400, 'data': e}
+
+
+@app.get('/Api/LoginPhoneInput')  # 验证码登录 2 输入验证码
+def authorizations(code: str, authorization: str = Header(None)):
     global Login_is_bool
     auth_err = require_auth(authorization)
     if auth_err:
@@ -464,34 +542,47 @@ def authorization(code:str,authorization: str = Header(None)):
             Login_is_bool = True
             return {'code': 200, 'data': '登录成功'}
     except Exception as e:
-        return {'code':400,'data':e}
+        return {'code': 400, 'data': e}
 
 
+@app.get('/Api/LoginDebug')
+def LoginDebug(authorization: str = Header(None)):
+    global Login_is_bool
+    auth_err = require_auth(authorization)
+    if auth_err:
+        return auth_err
+    if Login_is_bool == False:
+        Login_is_bool = True
+        return {'code': 200, 'data': 'OK'}
+    else:
+        return {'code': 400, 'data': '已是登录状态,无需设定'}
 
 
 # 定时任务操作
 @app.get('/Time/add')
-def add_time(time:str, name:str, text:str=None, authorization: str = Header(None)):
+def add_time(time: str, name: str, text: str = None, authorization: str = Header(None)):
     auth_err = require_auth(authorization)
     if auth_err:
         return auth_err
     # 检查是否已存在该好友的定时任务
     for task_id, job in scheduled_tasks.items():
         if task_id.endswith(f"_{name}"):
-            return {'code':400,'data':f'好友 {name} 已有定时任务，请先删除或修改'}
+            return {'code': 400, 'data': f'好友 {name} 已有定时任务，请先删除或修改'}
 
     temp = douyin.Find_Friends(name)
     if temp.is_bool:
         play_time = format_time(time)
-        msg = AiqingGongyu_text() if text==None else text
+        msg = AiqingGongyu_text() if text == None else text
         # 添加定时任务并保存job对象
         job = schedule.every().day.at(play_time).do(douyin.Send_Frinder, name, msg)
         # 生成唯一任务ID
         task_id = f"{play_time}_{name}"
         scheduled_tasks[task_id] = job
-        return {'code':200,'data':f'已添加定时任务: {play_time}', 'task_id': task_id}
+        return {'code': 200, 'data': f'已添加定时任务: {play_time}', 'task_id': task_id}
     else:
-        return {'code': 404, 'data':temp.string}
+        return {'code': 404, 'data': temp.string}
+
+
 @app.get('/Time/del')
 def del_time(task_id: str, authorization: str = Header(None)):
     auth_err = require_auth(authorization)
@@ -502,9 +593,11 @@ def del_time(task_id: str, authorization: str = Header(None)):
         job = scheduled_tasks[task_id]
         schedule.cancel_job(job)
         del scheduled_tasks[task_id]
-        return {'code':200,'data':f'已删除任务: {task_id}'}
+        return {'code': 200, 'data': f'已删除任务: {task_id}'}
     else:
-        return {'code':404,'data':'任务ID不存在'}
+        return {'code': 404, 'data': '任务ID不存在'}
+
+
 @app.get('/Time/edit')
 def edit_time(name: str, new_time: str, authorization: str = Header(None)):
     auth_err = require_auth(authorization)
@@ -519,7 +612,7 @@ def edit_time(name: str, new_time: str, authorization: str = Header(None)):
             break
 
     if not old_task_id:
-        return {'code':404,'data':f'好友 {name} 没有定时任务'}
+        return {'code': 404, 'data': f'好友 {name} 没有定时任务'}
 
     # 取消旧任务
     old_job = scheduled_tasks[old_task_id]
@@ -546,6 +639,8 @@ def edit_time(name: str, new_time: str, authorization: str = Header(None)):
         'new_time': new_play_time,
         'task_id': new_task_id
     }
+
+
 @app.get('/Time/getlist')
 def get_time_list(authorization: str = Header(None)):
     auth_err = require_auth(authorization)
@@ -564,7 +659,8 @@ def get_time_list(authorization: str = Header(None)):
                 'name': name,
                 'next_run': str(job.next_run) if job.next_run else None
             })
-    return {'code':200,'data':{'count': len(tasks), 'tasks': tasks}}
+    return {'code': 200, 'data': {'count': len(tasks), 'tasks': tasks}}
+
 
 # 后台登录
 @app.get('/Api/Login/Admin')
@@ -576,12 +672,16 @@ def admin_login(username: str, password: str, request: Request = None):
         return {'code': 200, 'data': token}
     else:
         return {'code': 400, 'data': '登录失败'}
+
+
 @app.get('/Api/GetLastLoginIP')
 def get_last_login_ip(authorization: str = Header(None)):
     auth_err = require_auth(authorization)
     if auth_err:
         return auth_err
     return {'code': 200, 'data': _last_login_ip}
+
+
 # 退出登录
 @app.get('/Api/logout')
 def logout(authorization: str = Header(None)):
@@ -591,6 +691,7 @@ def logout(authorization: str = Header(None)):
     token = authorization[7:]
     remove_token(token)
     return {'code': 200, 'data': '已退出登录'}
+
 
 # 密码修改
 @app.get('/Api/ChangePassword')
@@ -603,6 +704,7 @@ def change_password(old_password: str, new_password: str, authorization: str = H
         return {'code': 400, 'data': '原密码错误'}
     _password = new_password
     return {'code': 200, 'data': '密码修改成功'}
+
 
 if __name__ == "__main__":
     prot = input('Prot:')

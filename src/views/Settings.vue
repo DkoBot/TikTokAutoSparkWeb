@@ -83,11 +83,20 @@
     <el-dialog v-model="phoneDialogVisible" title="验证码登录" width="400px" destroy-on-close>
       <el-form :model="phoneForm" label-width="80px">
         <el-form-item label="手机号">
-          <el-input
-            v-model="phoneForm.phone"
-            placeholder="请输入手机号"
-            @keyup.enter="handleSendCode"
-          />
+          <div style="display: flex; gap: 8px;">
+            <el-input
+              v-model="phoneForm.areacode"
+              placeholder="+86"
+              style="width: 70px; flex-shrink: 0;"
+              @keyup.enter="handleSendCode"
+            />
+            <el-input
+              v-model="phoneForm.phone"
+              placeholder="请输入手机号"
+              style="flex: 1"
+              @keyup.enter="handleSendCode"
+            />
+          </div>
         </el-form-item>
         <el-form-item label="验证码">
           <div style="display: flex; gap: 10px;">
@@ -184,18 +193,21 @@
       <el-button type="primary" :icon="Picture" @click="handleGetScreenshot" :loading="screenshotLoading">
         获取浏览器页面截图
       </el-button>
+      <el-button type="warning" :icon="WarnTriangleFilled" @click="handleForceLogin">
+        强制登录状态
+      </el-button>
     </div>
-    <div v-if="screenshotUrl" class="screenshot-wrapper">
+    <el-dialog v-model="screenshotPreviewVisible" title="浏览器截图" width="600px" destroy-on-close>
       <img :src="screenshotUrl" alt="浏览器截图" class="screenshot-img" />
-    </div>
+    </el-dialog>
   </el-card>
 </template>
 
 <script setup>
 import { ref, onMounted, onActivated } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Key, Refresh, View, Loading, Edit, Lock, Document, SwitchButton, Picture, Message } from '@element-plus/icons-vue'
-import { getInitStatus, getLoginStatus, initBrowser, getLoginPng, login, getUsername, changePassword, getLastLoginIP, getFriendsList, getCooker, logout, pnglogin, getScrlk, dieLogin, sendVerifyCode, submitVerifyCode } from '../api/douyin'
+import { Key, Refresh, View, Loading, Edit, Lock, Document, SwitchButton, Picture, Message, WarnTriangleFilled } from '@element-plus/icons-vue'
+import { getInitStatus, getLoginStatus, initBrowser, getLoginPng, login, getUsername, changePassword, getLastLoginIP, getFriendsList, getCooker, logout, pnglogin, getScrlk, dieLogin, sendVerifyCode, submitVerifyCode, forceLogin } from '../api/douyin'
 import { loginStatus, hasLoaded, setLoginStatus, setFriendsList } from '../stores/browser'
 
 const loginLoading = ref(false)
@@ -227,11 +239,13 @@ const cookieForm = ref({
 })
 const screenshotLoading = ref(false)
 const screenshotUrl = ref('')
+const screenshotPreviewVisible = ref(false)
 const phoneDialogVisible = ref(false)
 const phoneLoading = ref(false)
 const codeLoading = ref(false)
 const codeCountdown = ref(0)
 const phoneForm = ref({
+  areacode: '+86',
   phone: '',
   code: ''
 })
@@ -479,7 +493,7 @@ const handleSendCode = async () => {
   }
   codeLoading.value = true
   try {
-    const res = await sendVerifyCode(phoneForm.value.phone)
+    const res = await sendVerifyCode(phoneForm.value.areacode, phoneForm.value.phone)
     if (res.code == 200) {
       ElMessage.success('验证码发送成功')
       codeCountdown.value = 60
@@ -537,6 +551,7 @@ const handleGetScreenshot = async () => {
     const res = await getScrlk()
     if (res.code == 200) {
       screenshotUrl.value = 'data:image/png;base64,' + res.data
+      screenshotPreviewVisible.value = true
     } else {
       ElMessage.error(res.data || '获取截图失败')
     }
@@ -544,6 +559,19 @@ const handleGetScreenshot = async () => {
     ElMessage.error('获取截图失败，请确保已登录')
   } finally {
     screenshotLoading.value = false
+  }
+}
+
+const handleForceLogin = async () => {
+  try {
+    const res = await forceLogin()
+    if (res.code == 200) {
+      ElMessage.success(res.data || '强制登录状态成功')
+    } else {
+      ElMessage.error(res.data || '强制登录状态失败')
+    }
+  } catch (error) {
+    ElMessage.error('强制登录状态失败')
   }
 }
 
@@ -695,8 +723,11 @@ onActivated(async () => {
 }
 
 .screenshot-img {
-  width: 100%;
-  max-width: 800px;
+  max-width: 100%;
+  max-height: 70vh;
+  width: auto;
+  height: auto;
   display: block;
+  margin: 0 auto;
 }
 </style>
