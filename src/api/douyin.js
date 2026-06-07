@@ -34,7 +34,7 @@ api.interceptors.response.use(
         }, 1500)
         return Promise.reject(new Error(res.data || '未授权'))
       }
-      if (res && res.code !== undefined && res.code != 200 && res.code != '200') {
+      if (res && res.code !== undefined && res.code != 200 && res.code != '200' && res.code != 202 && res.code != '202') {
         ElMessage.error(res.data || res.msg || res.message || '请求失败')
         return Promise.reject(new Error(res.data || '请求失败'))
       }

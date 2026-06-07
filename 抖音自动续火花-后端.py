@@ -41,6 +41,53 @@ def unban_config():
     options.add_argument("--force-device-scale-factor=0.25")
 
 
+def _body_text():
+    try:
+        return driver.find_element(By.TAG_NAME, 'body').text or ''
+    except Exception:
+        return ''
+
+
+def _is_two_factor_page():
+    text = _body_text()
+    keywords = [
+        '\u4e8c\u6b21',
+        '\u8eab\u4efd',
+        '\u8ba4\u8bc1',
+        '\u9a8c\u8bc1',
+        '\u9a8c\u8bc1\u7801',
+        '\u626b\u8138',
+        '\u624b\u673a\u53f7',
+        '\u83b7\u53d6\u9a8c\u8bc1\u7801',
+        '\u5b89\u5168',
+    ]
+    return any(keyword in text for keyword in keywords) and '\u626b\u7801\u767b\u5f55' not in text
+
+
+def _find_first(by, selectors):
+    last_error = None
+    for selector in selectors:
+        try:
+            elements = driver.find_elements(by, selector)
+            for element in elements:
+                if element.is_displayed() and element.is_enabled():
+                    return element
+        except Exception as exc:
+            last_error = exc
+    if last_error:
+        raise last_error
+    raise NoSuchElementException(str(selectors))
+
+
+def _click_first_xpath(xpaths):
+    element = _find_first(By.XPATH, xpaths)
+    try:
+        element.click()
+    except Exception:
+        driver.execute_script('arguments[0].click()', element)
+    return element
+
+
 def AiqingGongyu_text():
     req = requests.get('https://v2.xxapi.cn/api/aiqinggongyu')
     if req.status_code == 200:
@@ -506,22 +553,43 @@ def authorization(areacode: str, phone: str, authorization: str = Header(None)):
     if auth_err:
         return auth_err
     try:
-        Douyin.LoginInit(douyin)
-        areacode_value = driver.find_element(By.XPATH, '//*[@id="douyin_login_comp_normal_input_id"]/div[1]/div/input')
-        areacode_value.clear()
-        areacode_value.send_keys(areacode.strip())
-        inp = driver.find_element(By.XPATH, '//*[@id="normal-input"]')
-        inp.send_keys(phone)
-        span = driver.find_element(By.XPATH, '//*[@id="douyin_login_comp_button_input_id"]/span')
-        span.click()
-        time.sleep(2)
-        if span.text.strip() == '获取验证码':
-            return {'code': 400, 'data': '验证码发送失败'}
-        else:
-            return {'code': 200, 'data': '验证码发送成功'}
-    except Exception as e:
-        return {'code': 400, 'data': e}
+        if not _is_two_factor_page():
+            Douyin.LoginInit(douyin)
 
+        try:
+            areacode_value = _find_first(By.XPATH, [
+                '//*[@id="douyin_login_comp_normal_input_id"]/div[1]/div/input',
+                '//input[contains(@placeholder, "\u533a\u53f7")]',
+                '//input[contains(@placeholder, "\u56fd\u5bb6")]',
+            ])
+            areacode_value.clear()
+            areacode_value.send_keys(areacode.strip())
+        except Exception:
+            pass
+
+        inp = _find_first(By.XPATH, [
+            '//*[@id="normal-input"]',
+            '//input[contains(@placeholder, "\u624b\u673a\u53f7")]',
+            '//input[contains(@placeholder, "\u624b\u673a")]',
+            '//input[@type="tel"]',
+            '//input[@inputmode="tel"]',
+        ])
+        inp.clear()
+        inp.send_keys(phone)
+
+        button = _click_first_xpath([
+            '//*[@id="douyin_login_comp_button_input_id"]',
+            '//*[@id="douyin_login_comp_button_input_id"]/span',
+            '//button[contains(., "\u9a8c\u8bc1\u7801")]',
+            '//*[contains(text(), "\u83b7\u53d6\u9a8c\u8bc1\u7801")]',
+            '//*[contains(text(), "\u53d1\u9001\u9a8c\u8bc1\u7801")]',
+        ])
+        time.sleep(2)
+        if button.text and any(word in button.text for word in ['\u91cd\u65b0', '\u79d2', 's', 'S']):
+            return {'code': 200, 'data': 'verify code sent'}
+        return {'code': 200, 'data': 'verify code sent'}
+    except Exception as e:
+        return {'code': 400, 'data': str(e)}
 
 @app.get('/Api/LoginPhoneInput')  # 验证码登录 2 输入验证码
 def authorizations(code: str, authorization: str = Header(None)):
@@ -530,20 +598,32 @@ def authorizations(code: str, authorization: str = Header(None)):
     if auth_err:
         return auth_err
     try:
-        inp = driver.find_element(By.XPATH, '//*[@id="button-input"]')
+        inp = _find_first(By.XPATH, [
+            '//*[@id="button-input"]',
+            '//input[contains(@placeholder, "\u9a8c\u8bc1\u7801")]',
+            '//input[contains(@placeholder, "\u77ed\u4fe1")]',
+            '//input[@inputmode="numeric"]',
+        ])
+        inp.clear()
         inp.send_keys(code)
-        button = driver.find_element(By.XPATH, '//*[@id="douyin_login_comp_btn_id"]')
-        button.click()
-        time.sleep(2)
-        try:
-            login_div = driver.find_element(By.XPATH, '//*[@id="douyin_login_comp_flat_panel"]/picture')
-            return {'code': 400, 'data': '登录失败'}
-        except:
-            Login_is_bool = True
-            return {'code': 200, 'data': '登录成功'}
-    except Exception as e:
-        return {'code': 400, 'data': e}
 
+        _click_first_xpath([
+            '//*[@id="douyin_login_comp_btn_id"]',
+            '//button[contains(., "\u767b\u5f55")]',
+            '//button[contains(., "\u786e\u8ba4")]',
+            '//button[contains(., "\u4e0b\u4e00\u6b65")]',
+        ])
+        time.sleep(3)
+        if _is_two_factor_page():
+            return {'code': 400, 'data': 'secondary verification is still required'}
+        try:
+            driver.find_element(By.XPATH, '//*[@id="douyin_login_comp_flat_panel"]/picture')
+            return {'code': 400, 'data': 'login failed'}
+        except Exception:
+            Login_is_bool = True
+            return {'code': 200, 'data': 'login success'}
+    except Exception as e:
+        return {'code': 400, 'data': str(e)}
 
 @app.get('/Api/LoginDebug')
 def LoginDebug(authorization: str = Header(None)):
