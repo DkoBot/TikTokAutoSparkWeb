@@ -308,7 +308,15 @@ const handleCheckLogin = async () => {
   checkLoading.value = true
   try {
     const res = await pnglogin()
-    loginStatus.value = res.code == 200
+    if (res.code == 202 || res.code == '202' || res.data === 'two_factor_required') {
+      loginStatus.value = false
+      setLoginStatus(false)
+      qrDialogVisible.value = false
+      phoneDialogVisible.value = true
+      ElMessage.warning('扫码已通过，请继续完成手机号验证码二次认证')
+      return
+    }
+    loginStatus.value = res.code == 200 || res.code == '200'
     setLoginStatus(loginStatus.value)
     if (loginStatus.value) {
       ElMessage.success('登录成功，扫码登录窗口将关闭')
