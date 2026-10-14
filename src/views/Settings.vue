@@ -306,8 +306,9 @@ const handleRefreshStatus = async () => {
 
 const handleCheckLogin = async () => {
   checkLoading.value = true
-  try {
+try {
     const res = await pnglogin()
+    loginStatus.value = res.code == 200
     if (res.code == 202 || res.code == '202' || res.data === 'two_factor_required') {
       loginStatus.value = false
       setLoginStatus(false)
